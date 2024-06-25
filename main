@@ -1,0 +1,82 @@
+import telebot
+import requests
+from datetime import datetime, timedelta
+
+
+api_key = "Rdb0lIHP2xmBb4Axv6GERgih2iwZ8dffS8TQILc8"
+bot_token = '7206887492:AAFk386bWHbhx-OvUoeC0GH5D_pXmOi0JA4'
+bot = telebot.TeleBot(bot_token)
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "🌍 <b>Bot made by https://t.me/SpeedCruze</b> 🚀\n\n<i> Try using commands to explore our cosmic bot!</i>", parse_mode='html')
+
+@bot.message_handler(commands=['today'])
+def send_today_apod(message):
+    user_input = message.text.split(' ')[1:]
+    user_input = ' '.join(user_input)
+
+    if user_input and int(user_input.split('-')[0]) < 2000:
+        bot.reply_to(message, "The year must be more than 1999")
+        return
+
+    url_GA = f"https://api.nasa.gov/planetary/apod?api_key={api_key}"
+    if user_input:
+        url_GA += f"&date={user_input}"
+
+    try:
+        response = requests.get(url_GA)
+        response.raise_for_status()  # Raise an exception if there's a problem with the request
+        data = response.json()
+
+        caption = f"*Today's Astronomy Picture of the Day*\n\n*Date:* _{data['date']}_\n\n*Explanation:* _{data['explanation']}_\n\n*Copyright:* _NASA_"
+        if data.get('explanation') is None:
+            return
+
+        if len(caption) > 1020:
+            bot.send_photo(message.chat.id, data['url'])
+            bot.send_message(message.chat.id, caption, parse_mode="Markdown")
+        else:
+            bot.send_photo(message.chat.id, data['url'], caption=caption, parse_mode="Markdown")
+
+        if not user_input:
+            bot.reply_to(message, "<b>You can also </b> : <code>/today 2024-02-03 </code> [ Year-Month-Day ]", parse_mode="html")
+    except requests.exceptions.RequestException as e:
+        bot.reply_to(message, f"Error fetching data: {e}")
+
+def random_date(start_date=datetime(2000, 1, 1)):
+  """Generates a random date between the start_date and today."""
+  today = datetime.now()
+  time_between_dates = today - start_date
+  days_between_dates = time_between_dates.days
+  random_number_of_days = random.randrange(days_between_dates)
+  random_date = start_date + timedelta(days=random_number_of_days)
+  return random_date.strftime('%Y-%m-%d')
+
+
+@bot.message_handler(commands=['random'])
+def send_random_apod(message):
+    random_date = random_date()
+
+    url_GA = f"https://api.nasa.gov/planetary/apod?api_key={api_key}&date={random_date}"
+
+    try:
+        response = requests.get(url_GA)
+        response.raise_for_status()  # Raise an exception if there's a problem with the request
+        data = response.json()
+
+        caption = f"*Today's Astronomy Picture of the Day*\n\n*Date:* _{data['date']}_\n\n*Explanation:* _{data['explanation']}_\n\n*Copyright:* _NASA_"
+
+        if len(caption) > 1020:
+            bot.send_photo(message.chat.id, data['url'])
+            bot.send_message(message.chat.id, caption, parse_mode="Markdown")
+        else:
+            bot.send_photo(message.chat.id, data['url'], caption=caption, parse_mode="Markdown")
+
+    except requests.exceptions.RequestException as e:
+        bot.reply_to(message, f"Error fetching data: {e}")
+
+
+# You can add more commands and features here
+
+bot.polling()
